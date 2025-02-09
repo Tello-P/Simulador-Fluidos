@@ -62,9 +62,12 @@ int main()
 			}
 			if (event.type == SDL_MOUSEMOTION)
 			{
+				if (event.motion.state != 0)
+				{
 				int cell_x = event.motion.x / CELL_SIZE;
 				int cell_y = event.motion.y / CELL_SIZE;
 				color_cell(surface, cell_x, cell_y);
+				}
 			}
 		}
 
