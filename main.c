@@ -11,13 +11,13 @@
 #define COLUMNS SCREEN_WIDTH/CELL_SIZE
 #define ROWS SCREEN_HEIGHT/CELL_SIZE
 #define LINE_WIDTH 2
-#define SOLID_TYPE 0
-#define WATER_TYPE 1
+#define SOLID_TYPE 1
+#define WATER_TYPE 0
 
 struct Cell
 {
 	int type;	// Solido o liquido
-	int fill_state;	// Cuanto liquido en esa celda
+	double fill_level;	// Cuanto liquido en esa celda, entre 0 y 1
 	int x;
 	int y;
 };
@@ -27,11 +27,25 @@ void draw_cell(SDL_Surface* surface, struct Cell cell)
 	int pixel_x = cell.x*CELL_SIZE;
 	int pixel_y = cell.y*CELL_SIZE;
 	SDL_Rect cell_rect = (SDL_Rect){pixel_x, pixel_y, CELL_SIZE, CELL_SIZE};
-	Uint32 color = COLOR_WHITE;
-	if (cell.type == WATER_TYPE)
-		color = COLOR_BLUE;
 
-	SDL_FillRect(surface, &cell_rect, color);
+	// background
+	SDL_FillRect(surface, &cell_rect, COLOR_BLACK);
+	// Water fill level
+	if (cell.type == WATER_TYPE)
+	{
+		int water_height = cell.fill_level * CELL_SIZE;
+		int empty_height = CELL_SIZE - water_height;
+		SDL_Rect water_rect = (SDL_Rect){pixel_x, pixel_y+empty_height, CELL_SIZE, water_height};
+		SDL_FillRect(surface, &water_rect, COLOR_BLUE);
+	}
+	// Solids
+	if (cell.type == SOLID_TYPE)
+	{
+		SDL_FillRect(surface, &cell_rect, COLOR_WHITE);
+	}
+
+
+
 }
 
 void draw_grid(SDL_Surface* surface)
@@ -49,6 +63,23 @@ void draw_grid(SDL_Surface* surface)
 	
 }
 
+void initialize_environment(struct Cell environment[ROWS*COLUMNS])
+{
+	for (int i=0; i<ROWS; i++)
+	{
+		for (int j=0; j<COLUMNS; j++)
+		{
+			environment[j+COLUMNS*i] = (struct Cell){WATER_TYPE,0,j,i};
+		}
+	}
+}
+
+void draw_environment(SDL_Surface *surface, struct Cell environment[ROWS*COLUMNS])
+{
+	for (int i=0; i<ROWS*COLUMNS; i++)
+		draw_cell(surface, environment[i]);
+}
+
 int main()
 {
 	SDL_Init(SDL_INIT_VIDEO);
@@ -56,7 +87,10 @@ int main()
 	
 	SDL_Surface* surface = SDL_GetWindowSurface(window);
 
-	draw_grid(surface);
+	// Modelar la malla de las celdas
+	struct Cell environment[ROWS * COLUMNS];
+	
+	initialize_environment(environment);
 
 	int simulation_running = 1;
 	SDL_Event event;
@@ -73,10 +107,11 @@ int main()
 			{
 				if (event.motion.state != 0)
 				{
-				int cell_x = event.motion.x / CELL_SIZE;
-				int cell_y = event.motion.y / CELL_SIZE;
-				struct Cell cell = (struct Cell){current_type,0,cell_x,cell_y};
-				draw_cell(surface, cell);
+					int cell_x = event.motion.x / CELL_SIZE;
+					int cell_y = event.motion.y / CELL_SIZE;
+					struct Cell cell = (struct Cell){current_type,0,cell_x,cell_y};
+					environment[cell_x + COLUMNS*cell_y] = cell;
+
 				}
 			}
 			if (event.type == SDL_KEYDOWN)
@@ -84,11 +119,8 @@ int main()
 					current_type = !current_type;
 		}
 
-		SDL_Rect rectangle = (SDL_Rect){50,50,100,50};
-		SDL_FillRect(surface, &rectangle, COLOR_WHITE);
-
-		SDL_Rect blue_rectangle = (SDL_Rect){150,50,100,50};
-		SDL_FillRect(surface, &blue_rectangle, COLOR_BLUE);
+		draw_environment(surface, environment);
+		draw_grid(surface);
 		SDL_UpdateWindowSurface(window);
 
 		SDL_Delay(100);
